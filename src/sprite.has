@@ -1,0 +1,381 @@
+*----------------------------------------
+*
+*		スプライト管理
+*
+*----------------------------------------
+
+	.include	IOCSCALL.MAC
+
+	.xdef	_set_sprite				* スプライト設定
+	.xdef	_set_sprite_4
+	.xdef	_sprite_terminate		* 終端処理
+	.xdef	_sprite_clear			* スプライトバッファクリア
+	.xdef	_sprite_init			* スプライト管理初期化
+	.xdef	_sprite_quit			* スプライト管理終了
+
+	.xref	_vsync_cnt				* 垂直同期カウンタ
+
+
+	.cpu	68000
+
+SPR_ADDR	.equ	$eb0000			* スプライトレジスタ
+RASTER_NUM	.equ	$e80012			* 割り込みラスタ番号
+RNUM:		.equ	8				* 描画ラスタ数
+PRW_MAX:	.equ	4				* プライオリティ数
+
+
+	.text
+	.even
+
+*//////////////////////////////////////////////
+*    スプライト設定
+*		引数	 4(sp) = x + 16
+*				 8(sp) = y + 16
+*				12(sp) = SP/COLOR
+*				16(sp) = プライオリティ*4
+*
+_set_sprite:
+	move.w	6(sp),d0				* x
+*	addi.w	#16,d0
+*	cmpi.w	#256+16,d0
+*	bcc		ss_ret					* (x < -16 + 16) || (x >= 256 + 16)
+	swap.w	d0
+
+	move.w	10(sp),d0				* y
+*	addi.w	#16,d0
+	cmpi.w	#4+16,d0
+	ble		ss_ret					* y <= 4 + 16
+	cmpi.w	#236+16,d0
+	bcc		ss_ret					* y >= 236 + 16
+
+	movea.l	set_list(pc),a0
+	move.w	d0,d2
+	asr.w	d2
+	subq.w	#8,d2
+	andi.w	#$fff0,d2
+	move.w	18(sp),d1				* プライオリティ
+*	lsl.w	#2,d1
+	add.w	d1,d2
+	adda.w	d2,a0
+
+	movea.l	(a0),a1
+	move.l	d0,(a1)+				* XY
+	move.w	14(sp),(a1)+			* SP/COLOR
+
+	adda.w	ss_table(pc,d1),a1
+	move.l	a1,(a0)
+
+ss_ret:
+	rts
+
+ss_table:
+	.dc.w	2,0, -14,0, 2,0, -14,0
+
+
+_set_sprite_4:				* 4つ設定
+	move.w	6(sp),d0				* x
+	swap.w	d0						* クリッピング省略
+
+	move.w	10(sp),d0				* y
+	cmpi.w	#4-16+16,d0
+	ble		ss_ret					* y <= 4 - 16 + 16
+	cmpi.w	#4+16,d0
+	ble		ss_skip					* y <= 4 + 16
+	cmpi.w	#236+16,d0
+	bcc		ss_ret					* y >= 236 + 16
+
+	movea.l	set_list(pc),a0
+	move.w	18(sp),d1				* プライオリティ
+	adda.w	d1,a0
+	move.w	ss_table(pc,d1),d1
+
+	move.w	d0,d2
+	asr.w	d2
+	subq.w	#8,d2
+	btst.l	#3,d2
+	bne		@f
+									* 下段のスプライトも同じブロック
+	andi.w	#$fff0,d2
+	adda.w	d2,a0
+
+	movea.l	(a0),a1
+	move.w	14(sp),d2
+	move.l	d0,(a1)+				* XY
+	move.w	d2,(a1)+				* SP/COLOR
+	adda.w	d1,a1
+	addi.l	#16*0x10000,d0			* x += 16
+	addq.w	#1,d2					* SP/COLOR++;
+	move.l	d0,(a1)+				* XY
+	move.w	d2,(a1)+				* SP/COLOR
+	adda.w	d1,a1
+
+	addi.w	#16,d0					* y += 16
+	addq.w	#2,d2					* SP/COLOR += 2
+	move.l	d0,(a1)+				* XY
+	move.w	d2,(a1)+				* SP/COLOR
+	adda.w	d1,a1
+	subi.l	#16*0x10000,d0			* x -= 16
+	subq.w	#1,d2					* SP/COLOR--;
+	move.l	d0,(a1)+				* XY
+	move.w	d2,(a1)+				* SP/COLOR
+	adda.w	d1,a1
+	move.l	a1,(a0)
+	rts
+
+@@:									* 下段のスプライトが次のブロック
+	andi.w	#$fff0,d2
+	adda.w	d2,a0
+	lea.l	PRW_MAX*4(a0),a2
+
+	movea.l	(a0),a1
+	move.w	14(sp),d2
+	move.l	d0,(a1)+				* XY
+	move.w	d2,(a1)+				* SP/COLOR
+	adda.w	d1,a1
+	addi.l	#16*0x10000,d0			* x += 16
+	addq.w	#1,d2					* SP/COLOR++;
+	move.l	d0,(a1)+				* XY
+	move.w	d2,(a1)+				* SP/COLOR
+	adda.w	d1,a1
+	move.l	a1,(a0)
+
+	cmpi.w	#236,d0
+	bcc		ss_ret2					* y + 16 >= 236 + 16
+
+	addi.w	#16,d0					* y += 16
+	addq.w	#2,d2					* SP/COLOR += 2
+	movea.l	(a2),a1
+	move.l	d0,(a1)+				* XY
+	move.w	d2,(a1)+				* SP/COLOR
+	adda.w	d1,a1
+	subi.l	#16*0x10000,d0			* x -= 16
+	subq.w	#1,d2					* SP/COLOR--;
+	move.l	d0,(a1)+				* XY
+	move.w	d2,(a1)+				* SP/COLOR
+	adda.w	d1,a1
+	move.l	a1,(a2)
+ss_ret2:
+	rts
+
+ss_skip:							* 下段のみ描画
+	movea.l	set_list(pc),a0
+	move.w	18(sp),d1				* プライオリティ
+	adda.w	d1,a0
+	move.w	ss_table2(pc,d1),d1
+
+	movea.l	(a0),a1
+	addi.w	#16,d0					* y += 16
+	move.w	14(sp),d2
+	addq.w	#2,d2					* sp += 2
+	move.l	d0,(a1)+				* XY
+	move.w	d2,(a1)+				* SP/COLOR
+	adda.w	d1,a1
+	addi.l	#16*0x10000,d0			* x += 16
+	addq.w	#1,d2					* sp++;
+	move.l	d0,(a1)+				* XY
+	move.w	d2,(a1)+				* SP/COLOR
+	adda.w	d1,a1
+	move.l	a1,(a0)
+	rts
+
+ss_table2:
+	.dc.w	2,0, -14,0, 2,0, -14,0
+
+
+*//////////////////////
+*    終端処理
+*
+_sprite_terminate:
+	lea.l	spr_addr(pc),a0
+	not.w	spr_page				* ページ切り替え
+	bne	@f
+	lea.l	RNUM*PRW_MAX*2(a0),a0
+@@:
+	move.l	a0,set_list
+	rts
+
+
+*/////////////////////////////////////////////////
+*    スプライトバッファクリア
+*
+_sprite_clear:
+	lea.l	spr_buf(pc),a0			* 設定バッファ
+	tst.w	spr_page
+	beq		@f
+	lea.l	RNUM*64*8(a0),a0
+@@:
+
+	lea.l	2(a0),a1
+	clr.w	d0
+	.rept	RNUM*64/4-1
+	move.w	d0,(a1)
+	move.w	d0,8(a1)
+	move.w	d0,16(a1)
+	move.w	d0,24(a1)
+	lea.l	32(a1),a1
+	.endm
+	move.w	d0,(a1)
+	move.w	d0,8(a1)
+	move.w	d0,16(a1)
+	move.w	d0,24(a1)
+
+	movea.l	set_list(pc),a1
+	.rept	RNUM*2-1
+	move.l	a0,(a1)+
+	lea.l	31*8(a0),a0
+	move.l	a0,(a1)+
+	addq.l	#8,a0
+	.endm
+	move.l	a0,(a1)+
+	lea.l	31*8(a0),a0
+	move.l	a0,(a1)+
+	rts
+
+
+
+*/////////////////////////
+*    スプライト描画
+*
+spr_hsync:
+	ori.w	#$0700,sr
+	movem.l	d0/a0-a1,-(sp)
+
+	movea.l	spr_list(pc),a0			* スプライトリスト
+	move.l	spr_top(pc),d0
+	eori.w	#8,d0
+	move.w	d0,spr_top+2
+	movea.l	d0,a1					* スプライトレジスタ
+
+	andi.w	#$feff,$eb0808			* スプライトOFF
+	.rept	64-1
+	move.l	(a0)+,(a1)+
+	move.l	(a0)+,(a1)+
+	addq.w	#8,a1
+	.endm
+	move.l	(a0)+,(a1)+
+	move.l	(a0)+,(a1)+
+	ori.w	#$0200,$eb0808			* スプライトON
+
+	move.w	spr_rnum(pc),d0			* 割り込みラスタ番号
+	cmpi.w	#64*(RNUM-1)+16,d0
+	bge		@f
+	move.l	a0,spr_list
+	add.w	#64,d0
+	move.w	d0,spr_rnum
+	move.w	d0,RASTER_NUM
+
+@@:
+	movem.l	(sp)+,d0/a0-a1
+	andi.w	#$f8ff,sr
+	rte
+
+
+*//////////////////////////////////
+*    スプライト描画初期化
+*
+spr_vsync:
+	movem.l	a0-a2,-(sp)
+
+	ori.w	#$0700,sr
+	lea.l	spr_buf(pc),a0			* 描画バッファ
+	tst.w	spr_page
+	bne		@f
+	lea.l	RNUM*64*8(a0),a0		* 設定バッファ
+@@:
+	move.l	a0,spr_list
+
+	clr.w	spr_top+2
+	move.w	#64*2+16,spr_rnum		* ラスタ割り込み位置
+	move.w	#64*2+16,RASTER_NUM
+	andi.w	#$f8ff,sr
+
+	lea.l	64*8(a0),a2				* スプライトリスト1
+	lea.l	SPR_ADDR,a1
+
+	andi.w	#$feff,$eb0808			* スプライトOFF
+	.rept	64
+	move.l	(a2)+,(a1)+				* 先頭２ブロックを描画
+	move.l	(a2)+,(a1)+
+	move.l	(a0)+,(a1)+
+	move.l	(a0)+,(a1)+
+	.endm
+	ori.w	#$0200,$eb0808			* スプライトON
+	move.l	a2,spr_list
+
+	addq.w	#1,_vsync_cnt			* 垂直同期カウンタ
+	movem.l	(sp)+,a0-a2
+	rte
+
+
+
+*//////////////////////////////////
+*    スプライト管理初期化
+*
+_sprite_init:
+	lea.l	spr_buf(pc),a0
+	clr.l	d0
+	moveq.l	#3,d0
+	move.w	#2*RNUM*64-1,d2
+@@:									* スプライトレジスタデータ初期化
+	move.l	d0,(a0)+
+	move.l	d1,(a0)+
+	dbra	d2,@b
+
+	clr.w	spr_page
+	move.l	#spr_addr,set_list
+	bsr		_sprite_clear
+
+	moveq.l	#1,d1
+	lea.l	spr_vsync,a1
+	IOCS	_VDISPST				* 垂直同期割り込み設定
+
+	move.w	#64*2+16,d1				* ラスタ割り込み位置
+	move.w	d1,spr_rnum
+	lea.l	spr_hsync,a1
+	IOCS	_CRTCRAS				* ラスター割り込み設定
+
+	rts
+
+
+*//////////////////////////////////
+*    スプライト管理終了
+*
+_sprite_quit:
+	movea.l	#0,a1
+	IOCS	_CRTCRAS				* ラスター割り込み解除
+	IOCS	_VDISPST				* 垂直同期割り込み解除
+	rts
+
+
+
+*////////////////////////////////////////
+
+	.data
+	.even
+
+spr_page:							* バッファページ
+	.dc.w	0
+
+spr_rnum:							* 描画ラスタ番号
+	.dc.w	64*2+16
+
+spr_top:							* スプライトレジスタ
+	.dc.l	SPR_ADDR
+
+spr_list:							* 描画中のリスト
+	.dc.l	0
+
+set_list:							* 設定中のリスト
+	.dc.l	0
+
+
+	.bss
+	.even
+
+spr_addr:							* バッファ使用アドレス
+	.ds.l	2*RNUM*PRW_MAX
+
+spr_buf:							* データバッファ
+	.ds.w	2*RNUM*64*4
+
+	.end

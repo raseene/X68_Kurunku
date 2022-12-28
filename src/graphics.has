@@ -1,0 +1,115 @@
+*----------------------------------------
+*
+*		グラフィック
+*
+*----------------------------------------
+
+	.include	IOCSCALL.MAC
+
+	.xdef	_clear_text				* テキスト画面クリア
+	.xdef	_timer_bar				* タイマーバー
+	.xdef	_combo_gauge			* コンボゲージ
+
+
+	.cpu	68000
+
+TEXT	equ	$e00000				* テキスト画面
+AC_SET	equ	$e8002a				* テキストアクセス
+
+TIMER_X	equ	136					* タイマーバー描画位置
+TIMER_Y	equ	224
+GAUGE_X	equ	151					* コンボゲージ描画位置
+GAUGE_Y	equ	207
+
+
+	.text
+	.even
+
+*//////////////////////////////////////////////
+*    テキスト画面クリア
+*
+_clear_text:
+	suba.l	a1,a1
+	IOCS	_B_SUPER			* スーパーバイザモード
+	move.w	#$1_f0,AC_SET		* 同時アクセス
+
+	movea.l	#TEXT,a0
+	moveq.l	#0,d1
+	.rept	4
+	.rept	$20/4
+	move.l	d1,(a0)+
+	.endm
+	lea.l	$60(a0),a0
+	.endm
+
+	move.w	d1,AC_SET
+	tst.l	d0
+	bmi		@f
+	movea.l	d0,a1
+	IOCS	_B_SUPER			* ユーザーモード
+@@:
+
+	move.w	d3,d1
+	swap.w	d1
+	move.w	#$0001,d1
+	move.w	#63,d2
+	move.w	#$000f,d3
+	IOCS	_TXRASCPY
+	swap.w	d1
+	move.w	d1,d3
+	rts
+
+
+*/////////////////////////////////////////
+*    タイマーバー
+*		引数	 4(sp) = 開始位置
+*				 8(sp) = 幅
+*
+_timer_bar:
+	move.w	6(sp),d0			* 開始位置
+	add.w	d0,d0
+	movea.l	#$c00000+TIMER_Y*$400+TIMER_X*2,a0
+	adda.w	d0,a0				* VRAM
+	move.w	10(sp),d0			* 幅
+	subq.w	#1,d0
+	clr.w	d1
+@@:
+	move.w	d1,$400*1(a0)
+	move.w	d1,$400*2(a0)
+	move.w	d1,$400*3(a0)
+	move.w	d1,$400*4(a0)
+	move.w	d1,$400*5(a0)
+	move.w	d1,$400*6(a0)
+	move.w	d1,$400*7(a0)
+	move.w	d1,$400*8(a0)
+	move.w	d1,$400*9(a0)
+	move.w	d1,$400*10(a0)
+	move.w	d1,$400*11(a0)
+	move.w	d1,(a0)+
+	dbra	d0,@b
+	rts
+
+
+*/////////////////////////////////////////
+*    コンボゲージ
+*		引数	 4(sp) = 開始位置
+*				 8(sp) = 幅
+*				12(sp) = 色
+*
+_combo_gauge:
+	move.w	6(sp),d0			* 開始位置
+	add.w	d0,d0
+	movea.l	#$c00000+GAUGE_Y*$400+GAUGE_X*2,a0
+	adda.w	d0,a0				* VRAM
+	move.w	10(sp),d0			* 幅
+	subq.w	#1,d0
+	move.w	14(sp),d1			* 色
+@@:
+	move.w	d1,$400*1(a0)
+	move.w	d1,$400*2(a0)
+	move.w	d1,$400*3(a0)
+	move.w	d1,$400*4(a0)
+	move.w	d1,(a0)+
+	dbra	d0,@b
+	rts
+

@@ -4,7 +4,7 @@
 *
 *----------------------------------------
 
-	.include	IOCSCALL.MAC
+	.include	iocscall.inc
 
 	.xdef	_set_sprite				* スプライト設定
 	.xdef	_set_sprite_4
@@ -313,7 +313,6 @@ spr_vsync:
 *
 _sprite_init:
 	lea.l	spr_buf(pc),a0
-	clr.l	d0
 	moveq.l	#3,d0
 	move.w	#2*RNUM*64-1,d2
 @@:									* スプライトレジスタデータ初期化
@@ -327,12 +326,12 @@ _sprite_init:
 
 	moveq.l	#1,d1
 	lea.l	spr_vsync,a1
-	IOCS	_VDISPST				* 垂直同期割り込み設定
+	IOCS	__VDISPST				* 垂直同期割り込み設定
 
 	move.w	#64*2+16,d1				* ラスタ割り込み位置
 	move.w	d1,spr_rnum
 	lea.l	spr_hsync,a1
-	IOCS	_CRTCRAS				* ラスター割り込み設定
+	IOCS	__CRTCRAS				* ラスター割り込み設定
 
 	rts
 
@@ -341,9 +340,9 @@ _sprite_init:
 *    スプライト管理終了
 *
 _sprite_quit:
-	movea.l	#0,a1
-	IOCS	_CRTCRAS				* ラスター割り込み解除
-	IOCS	_VDISPST				* 垂直同期割り込み解除
+	suba.l	a1,a1
+	IOCS	__CRTCRAS				* ラスター割り込み解除
+	IOCS	__VDISPST				* 垂直同期割り込み解除
 	rts
 
 

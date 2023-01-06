@@ -179,6 +179,9 @@ int		apic_load(const char*, int, int);		// PICファイル読み込み
 	return	TRUE;
 }
 
+#pragma GCC push_options
+#pragma GCC optimize("-fno-defer-pop")			// B_SUPER() 対処
+
 /********************************
     スコアボード背景描画
 			戻り値	成功したか
@@ -242,6 +245,8 @@ Bool	draw_board(void)
 	free(buf);
 	return	TRUE;
 }
+
+#pragma GCC pop_options
 
 /********************
     サウンド初期化
@@ -764,6 +769,9 @@ void	draw_mes_over(void)
 }
 
 
+#pragma GCC push_options
+#pragma GCC optimize("-fno-defer-pop")			// B_SUPER() 対処
+
 /**********
     描画
  **********/
@@ -838,3 +846,5 @@ void	combo_gauge(int, int, uint16_t);
 		exit_cnt = 0;
 	}
 }
+
+#pragma GCC pop_options

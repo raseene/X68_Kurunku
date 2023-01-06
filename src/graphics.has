@@ -4,7 +4,7 @@
 *
 *----------------------------------------
 
-	.include	IOCSCALL.MAC
+	.include	iocscall.inc
 
 	.xdef	_clear_text				* テキスト画面クリア
 	.xdef	_timer_bar				* タイマーバー
@@ -30,7 +30,7 @@ GAUGE_Y	equ	207
 *
 _clear_text:
 	suba.l	a1,a1
-	IOCS	_B_SUPER			* スーパーバイザモード
+	IOCS	__B_SUPER			* スーパーバイザモード
 	move.w	#$1_f0,AC_SET		* 同時アクセス
 
 	movea.l	#TEXT,a0
@@ -46,7 +46,7 @@ _clear_text:
 	tst.l	d0
 	bmi		@f
 	movea.l	d0,a1
-	IOCS	_B_SUPER			* ユーザーモード
+	IOCS	__B_SUPER			* ユーザーモード
 @@:
 
 	move.w	d3,d1
@@ -54,7 +54,7 @@ _clear_text:
 	move.w	#$0001,d1
 	move.w	#63,d2
 	move.w	#$000f,d3
-	IOCS	_TXRASCPY
+	IOCS	__TXRASCPY
 	swap.w	d1
 	move.w	d1,d3
 	rts

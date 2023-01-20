@@ -27,8 +27,8 @@ void	Effect_set(Effect* this, int _value, int16_t _x, int16_t _y, short _d)
 {
 	this->x = _x;
 	this->y = _y;
-	this->pat0 = PAL_EFFECT*0x100 + SPR_EFFECT + (_value % 10);
-	this->pat1 = _value/10;
+	this->pat0 = PAL_EFFECT*0x100 + SPR_EFFECT + modu(_value, 10);			// DIVU‚Åˆê“x‚ÉŒvŽZ‚µ‚½•û‚ª‘‚¢‚¯‚Ç
+	this->pat1 = divu(_value, 10);											// Œ©ˆÕ‚³—Dæ
 	if ( this->pat1 > 0 ) {
 		this->pat1 += PAL_EFFECT*0x100 + SPR_EFFECT + 10;
 		this->x += 4;

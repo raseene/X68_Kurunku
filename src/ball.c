@@ -94,7 +94,7 @@ Bool	Ball_update(Ball* this)
 			this->wait_cnt = 14;
 		}
 		else {
-			_y -= this->fall_cnt*BALL_H/6;
+			_y -= divu(this->fall_cnt*BALL_H, 6);
 		}
 	}
 	else if ( this->wait_cnt > 0 ) {				// Á‹Ž”»’è‘Ò‚¿i—Ž‰ºj

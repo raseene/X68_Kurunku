@@ -41,7 +41,7 @@ void	Number_update(Number* this)
 	short		k = this->keta*2;
 
 	do {
-		uint16_t	bg = PAL_NUMBER*0x100 + BG_NUMBER + (t % 10)*2;
+		uint16_t	bg = PAL_NUMBER*0x100 + BG_NUMBER + modu(t, 10)*2;
 
 		*--p = bg++;
 		*--p = bg;

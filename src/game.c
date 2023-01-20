@@ -459,7 +459,7 @@ Bool	game_update(void)
 	Number_update(&bg_combo);					// コンボ数
 
 	if ( bg_score.cnt > 0 ) {					// スコアアップ
-		bg_score.value += (score - bg_score.value + bg_score.cnt - 1)/bg_score.cnt;
+		bg_score.value += divu(score - bg_score.value + bg_score.cnt - 1, bg_score.cnt);
 		bg_score.cnt--;
 	}
 	Number_update(&bg_score);					// スコア
@@ -548,11 +548,11 @@ void	control(void)
 	if ( _tmp ) {
 		_x -= FIELD_X + 16 + 7 - BALL_W/2;
 		if ( (_x >= 0) && (_x < BALL_W*(FIELD_W - 1)) ) {
-			_x /= BALL_W;
+			_x = divs(_x, BALL_W);
 
 			_y = FIELD_Y + 16 + (FIELD_H - 1)*BALL_H + ((_x + 1) & 1)*BALL_H/2 - _y;
 			if ( (_y >= 0) && (_y < BALL_H*(FIELD_H - 1)) ) {
-				_y /= BALL_H;
+				_y = divs(_y, BALL_H);
 
 				Ball	*_b0 = &ball[_x][_y + (_x & 1)],
 						*_b1 = &ball[_x + 1][_y];
@@ -609,7 +609,7 @@ uint32_t	add_score(int16_t _x, int16_t _y, short _t)
 		combo++;
 		bg_combo.cnt = 1;
 	}
-	dec_combo = dec_combo*4/5 + 36;
+	dec_combo = divs(dec_combo*4, 5) + 36;
 
 	uint32_t	_d = (uint32_t)(combo*10);						// 加算点
 
@@ -693,7 +693,7 @@ void	check_fall(void)
 		if ( b->color == 0x08 ) {
 			uint16_t	t;
 			do {
-				t = (uint16_t)(rand() % COLOR_MAX);
+				t = modu(rand(), COLOR_MAX);
 			} while ( (t == forbidden_color) || (t == ((b - 1)->color & 0x0f)) );
 			Ball_fall(b, t);
 		}
@@ -763,7 +763,7 @@ void	draw_mes_over(void)
 
 	for (int i = 0; i < 8; i++) {
 		int		t = cnt - i*8 - 120;
-		set_sprite(x, 116 + 16 - ((t < 0) ? t*t/8 : (256 + sin_table[(t + 96) % 128])/32), PAL_OVER*0x100 + SPR_OVER + *p++, 0*4);
+		set_sprite(x, 116 + 16 - ((t < 0) ? muls(t, t)/8 : (256 + sin_table[(t + 96) % 128])/32), PAL_OVER*0x100 + SPR_OVER + *p++, 0*4);
 		x += *p++;
 	}
 }
@@ -785,7 +785,7 @@ void	combo_gauge(int, int, uint16_t);
 #if 0
 		TPALET2(1, warning_color[timer % (2*FPS)]);
 #else
-		*((uint16_t*)0xe82202) = warning_color[timer % (2*FPS)];
+		*((uint16_t*)0xe82202) = warning_color[modu(timer, 2*FPS)];
 #endif
 	}
 	{
@@ -794,7 +794,7 @@ void	combo_gauge(int, int, uint16_t);
 		Number_draw(&bg_combo);					// コンボ
 	}
 
-	int		len = (timer*TIMER_W + 62*FPS - 1)/(62*FPS);		// タイマーバー
+	int		len = divu(timer*TIMER_W + 62*FPS - 1, 62*FPS);			// タイマーバー
 
 	if ( len < timer_len ) {
 #if 0
@@ -810,7 +810,7 @@ void	combo_gauge(int, int, uint16_t);
 		timer_len = len;
 	}
 
-	len = (dec_combo*GAUGE_W + 180 - 1)/180;					// コンボゲージ
+	len = divu(dec_combo*GAUGE_W + 180 - 1, 180);					// コンボゲージ
 
 	if ( len > gauge_len ) {
 #if 0
